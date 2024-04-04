@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Lookup</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Search for Order by ID</h2>
+        <div class="form-group">
+            <input type="text" id="search" class="form-control" placeholder="Enter Order ID">
+        </div>
+        <button onclick="submitHandler()" class="btn btn-primary">Search</button>
+        <div id="orderInfo" class="mt-3"></div>
+    </div>
+
+    <script>
+        function submitHandler() {
+            const searchValue = document.getElementById('search').value;
+            if (searchValue === "") {
+                alert("Input order ID value!");
+                return;
+            }
+
+            fetch(`http://localhost:8080/order?id=${searchValue}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Order not found');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const orderInfoDiv = document.getElementById('orderInfo');
+                    const htmlContent = `
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Locale</th>
+                                    <th scope="col">Internal Signature</th>
+                                    <th scope="col">Customer ID</th>
+                                    <th scope="col">Delivery Service</th>
+                                    <th scope="col">Shardkey</th>
+                                    <th scope="col">SM ID</th>
+                                    <th scope="col">Date Created</th>
+                                    <th scope="col">OOF Shard</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>${data.locale}</td>
+                                    <td>${data.internal_signature}</td>
+                                    <td>${data.customer_id}</td>
+                                    <td>${data.delivery_service}</td>
+                                    <td>${data.shardkey}</td>
+                                    <td>${data.sm_id}</td>
+                                    <td>${data.date_created}</td>
+                                    <td>${data.oof_shard}</td>
+                                </tr>
+                            </tbody>
+                        </table>`;
+                    orderInfoDiv.innerHTML = htmlContent;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    const orderInfoDiv = document.getElementById('orderInfo');
+                    orderInfoDiv.innerHTML = `<p>${error.message}</p>`;
+                });
+        }
+    </script>
+</body>
+</html>
