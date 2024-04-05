@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-func GetOrderHandler() http.HandlerFunc {
+func GetOrderHandler(ch *cache.OrdersCache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		idParam := r.URL.Query().Get("id")
 		if idParam == "" {
@@ -21,7 +21,7 @@ func GetOrderHandler() http.HandlerFunc {
 			return
 		}
 
-		order, ok := cache.OrdersCache[id]
+		order, ok := ch.GetOrderById(id)
 		if !ok {
 			http.Error(w, "Order not found in cache", http.StatusNotFound)
 			return

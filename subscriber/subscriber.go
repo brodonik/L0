@@ -1,7 +1,6 @@
 package subscriber
 
 import (
-	"database/sql"
 	"encoding/json"
 	"log"
 	"main/cache"
@@ -12,9 +11,19 @@ import (
 	"github.com/nats-io/stan.go"
 )
 
-func SubscribeToOrder(sc stan.Conn, db *sql.DB) {
+type Subscriber struct {
+	Sc stan.Conn
+	Db *storage.Db
+	Ch *cache.OrdersCache
+}
 
-	_, err := sc.Subscribe("order", func(m *stan.Msg) {
+func NewSubscriber(sc *stan.Conn, db *storage.Db, ch *cache.OrdersCache) *Subscriber {
+	return &Subscriber{Sc: *sc, Db: db, Ch: ch}
+}
+
+func (s *Subscriber) SubscribeToOrder() {
+
+	_, err := s.Sc.Subscribe("order", func(m *stan.Msg) {
 
 		var order model.Order
 		if err := json.Unmarshal(m.Data, &order); err != nil {
@@ -47,7 +56,7 @@ func SubscribeToOrder(sc stan.Conn, db *sql.DB) {
 		}
 
 		var exists bool
-		err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM delivery WHERE customer_id = $1 AND sm_id = $2)", order.Customer_id, order.Sm_id).Scan(&exists)
+		err := s.Db.Db.QueryRow("SELECT EXISTS(SELECT 1 FROM delivery WHERE customer_id = $1 AND sm_id = $2)", order.Customer_id, order.Sm_id).Scan(&exists)
 		if err != nil {
 			log.Printf("Error checking if order exists: %v", err)
 			return
@@ -56,9 +65,9 @@ func SubscribeToOrder(sc stan.Conn, db *sql.DB) {
 			log.Printf("Order already exists: %+v\n", order)
 			return
 		}
+		s.Db.SaveOrderToDB(order)
+		s.Ch.CacheOrder(order)
 
-		storage.SaveOrderToDB(db, order)
-		cache.CacheOrder(order, db)
 		m.Ack()
 	}, stan.DeliverAllAvailable(), stan.DurableName("order-subscription"), stan.SetManualAckMode(), stan.AckWait(time.Second*30))
 

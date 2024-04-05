@@ -14,20 +14,23 @@ import (
 )
 
 func main() {
-	db := storage.ConnectToDB()
-	defer db.Close()
+	db := storage.NewDb()
+	defer db.Db.Close()
 
 	sc, err := stan.Connect("test-cluster", "client-123", stan.NatsURL("nats://localhost:4222"))
 	if err != nil {
 		log.Fatalf("Error connecting to NATS Streaming Server: %v", err)
 	}
 	defer sc.Close()
+	ch := cache.NewOrdersCache(db)
+	s := subscriber.NewSubscriber(&sc, db, ch)
+	s.SubscribeToOrder()
 
-	subscriber.SubscribeToOrder(sc, db)
+	ch.RestoreCacheFromDB()
 
 	http.HandleFunc("/order", func(w http.ResponseWriter, r *http.Request) {
 		if idParam := r.URL.Query().Get("id"); idParam != "" {
-			serverhttp.GetOrderHandler().ServeHTTP(w, r)
+			serverhttp.GetOrderHandler(ch).ServeHTTP(w, r)
 			return
 		}
 
@@ -36,7 +39,5 @@ func main() {
 
 	fmt.Println("Starting HTTP server on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", nil))
-
-	cache.RestoreCacheFromDB(db)
 
 }

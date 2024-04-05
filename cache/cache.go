@@ -1,28 +1,36 @@
 package cache
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 	"main/model"
+	"main/storage"
 )
 
-var OrdersCache = make(map[int]model.Order)
+type OrdersCache struct {
+	ch map[int]model.Order
+	db *storage.Db
+}
 
-func CacheOrder(order model.Order, db *sql.DB) {
+func NewOrdersCache(db *storage.Db) *OrdersCache {
+	return &OrdersCache{ch: make(map[int]model.Order), db: db}
+}
+
+func (o *OrdersCache) CacheOrder(order model.Order) {
 	var orderId int
-	err := db.QueryRow("SELECT id FROM delivery WHERE customer_id = $1", order.Customer_id).Scan(&orderId)
+	err := o.db.Db.QueryRow("SELECT id FROM delivery WHERE customer_id = $1", order.Customer_id).Scan(&orderId)
 	if err != nil {
 		log.Printf("Error fetching order id from database: %v", err)
 		return
 	}
 
-	OrdersCache[orderId] = order
+	o.ch[orderId] = order
+
 	fmt.Println("Order cached")
 }
 
-func RestoreCacheFromDB(db *sql.DB) {
-	rows, err := db.Query("SELECT locale, internal_signature, customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard FROM delivery")
+func (r *OrdersCache) RestoreCacheFromDB() {
+	rows, err := r.db.Db.Query("SELECT locale, internal_signature, customer_id, delivery_service, shardkey, sm_id, date_created, oof_shard FROM delivery")
 	if err != nil {
 		log.Fatalf("Error restoring cache from database: %v", err)
 	}
@@ -34,6 +42,12 @@ func RestoreCacheFromDB(db *sql.DB) {
 			log.Printf("Error scanning order: %v", err)
 			continue
 		}
-		CacheOrder(order, db)
+		r.CacheOrder(order)
+
 	}
+}
+
+func (o *OrdersCache) GetOrderById(orderId int) (*model.Order, bool) {
+	order, ok := o.ch[orderId]
+	return &order, ok
 }
