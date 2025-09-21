@@ -4,24 +4,18 @@ import (
 	"encoding/json"
 	"main/cache"
 	"net/http"
-	"strconv"
+	"strings"
 )
 
 func GetOrderHandler(ch *cache.OrdersCache) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		idParam := r.URL.Query().Get("id")
-		if idParam == "" {
-			http.Error(w, "Missing id parameter", http.StatusBadRequest)
+		path := strings.TrimPrefix(r.URL.Path, "/order/")
+		if path == "" {
+			http.Error(w, "Missing order_uid parameter", http.StatusBadRequest)
 			return
 		}
 
-		id, err := strconv.Atoi(idParam)
-		if err != nil {
-			http.Error(w, "Invalid id parameter", http.StatusBadRequest)
-			return
-		}
-
-		order, ok := ch.GetOrderById(id)
+		order, ok := ch.GetOrderByUid(path)
 		if !ok {
 			http.Error(w, "Order not found in cache", http.StatusNotFound)
 			return

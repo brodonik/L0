@@ -8,9 +8,9 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h2>Search for Order by ID</h2>
+        <h2>Search for Order by UID</h2>
         <div class="form-group">
-            <input type="text" id="search" class="form-control" placeholder="Enter Order ID">
+            <input type="text" id="search" class="form-control" placeholder="Enter Order UID">
         </div>
         <button onclick="submitHandler()" class="btn btn-primary">Search</button>
         <div id="orderInfo" class="mt-3"></div>
@@ -20,11 +20,11 @@
         function submitHandler() {
             const searchValue = document.getElementById('search').value;
             if (searchValue === "") {
-                alert("Input order ID value!");
+                alert("Input order UID value!");
                 return;
             }
 
-            fetch(`http://localhost:8080/order?id=${searchValue}`)
+            fetch(`http://localhost:8081/order/${searchValue}`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Order not found');
@@ -33,33 +33,72 @@
                 })
                 .then(data => {
                     const orderInfoDiv = document.getElementById('orderInfo');
+                    const itemsHtml = data.items.map(item => `
+                        <tr>
+                            <td>${item.chrt_id}</td>
+                            <td>${item.name}</td>
+                            <td>${item.brand}</td>
+                            <td>${item.price}</td>
+                            <td>${item.total_price}</td>
+                            <td>${item.status}</td>
+                        </tr>
+                    `).join('');
+
                     const htmlContent = `
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Locale</th>
-                                    <th scope="col">Internal Signature</th>
-                                    <th scope="col">Customer ID</th>
-                                    <th scope="col">Delivery Service</th>
-                                    <th scope="col">Shardkey</th>
-                                    <th scope="col">SM ID</th>
-                                    <th scope="col">Date Created</th>
-                                    <th scope="col">OOF Shard</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>${data.locale}</td>
-                                    <td>${data.internal_signature}</td>
-                                    <td>${data.customer_id}</td>
-                                    <td>${data.delivery_service}</td>
-                                    <td>${data.shardkey}</td>
-                                    <td>${data.sm_id}</td>
-                                    <td>${data.date_created}</td>
-                                    <td>${data.oof_shard}</td>
-                                </tr>
-                            </tbody>
-                        </table>`;
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h4>Order Information</h4>
+                                <table class="table table-striped">
+                                    <tr><td><strong>Order UID:</strong></td><td>${data.order_uid}</td></tr>
+                                    <tr><td><strong>Track Number:</strong></td><td>${data.track_number}</td></tr>
+                                    <tr><td><strong>Entry:</strong></td><td>${data.entry}</td></tr>
+                                    <tr><td><strong>Customer ID:</strong></td><td>${data.customer_id}</td></tr>
+                                    <tr><td><strong>Delivery Service:</strong></td><td>${data.delivery_service}</td></tr>
+                                    <tr><td><strong>Date Created:</strong></td><td>${data.date_created}</td></tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h4>Delivery Information</h4>
+                                <table class="table table-striped">
+                                    <tr><td><strong>Name:</strong></td><td>${data.delivery.name}</td></tr>
+                                    <tr><td><strong>Phone:</strong></td><td>${data.delivery.phone}</td></tr>
+                                    <tr><td><strong>Email:</strong></td><td>${data.delivery.email}</td></tr>
+                                    <tr><td><strong>City:</strong></td><td>${data.delivery.city}</td></tr>
+                                    <tr><td><strong>Address:</strong></td><td>${data.delivery.address}</td></tr>
+                                    <tr><td><strong>Region:</strong></td><td>${data.delivery.region}</td></tr>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h4>Payment Information</h4>
+                                <table class="table table-striped">
+                                    <tr><td><strong>Transaction:</strong></td><td>${data.payment.transaction}</td></tr>
+                                    <tr><td><strong>Currency:</strong></td><td>${data.payment.currency}</td></tr>
+                                    <tr><td><strong>Provider:</strong></td><td>${data.payment.provider}</td></tr>
+                                    <tr><td><strong>Amount:</strong></td><td>${data.payment.amount}</td></tr>
+                                    <tr><td><strong>Bank:</strong></td><td>${data.payment.bank}</td></tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h4>Items</h4>
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Chrt ID</th>
+                                            <th>Name</th>
+                                            <th>Brand</th>
+                                            <th>Price</th>
+                                            <th>Total Price</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${itemsHtml}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>`;
                     orderInfoDiv.innerHTML = htmlContent;
                 })
                 .catch(error => {
